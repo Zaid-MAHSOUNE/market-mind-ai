@@ -36,5 +36,9 @@ To ensure high reliability and logical consistency, the following techniques are
 ## 🚀 Getting Started
 
 1. **Clone the repo:** `git clone https://github.com/Zaid-MAHSOUNE/market-mind-ai.git`
+2. **Create a virtual env:** `python -m venv [wanted_venv_folder_name]`
+3. **Activate the virtual env:** `source [wanted_venv_folder_name]/bin/activate`
 2. **Install dependencies:** `pip install -r requirements.txt`
 3. **Run the app:** `streamlit run app.py`
+
+* **Note**: the virtual env setup is for linux based machines for windows machines u would find the setup guide here : [python_virtualenv](https://www.w3schools.com/python/python_virtualenv.asp)

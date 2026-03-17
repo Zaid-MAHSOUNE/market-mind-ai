@@ -1,6 +1,7 @@
 streamlit
 langchain
 langchain-openai
-yfinance
 python-dotenv
-tavily-python
+yfinance          # For historical prices and stock info
+tavily-python     # Optimized search engine for LLM agents
+pandas            # Data manipulation

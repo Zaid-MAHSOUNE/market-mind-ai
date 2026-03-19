@@ -5,3 +5,19 @@ python-dotenv
 yfinance          # For historical prices and stock info
 tavily-python     # Optimized search engine for LLM agents
 pandas            # Data manipulation
+
+# --- Core Framework ---
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+langchain-classic
+langchain-chroma
+
+
+# --- PDF & Web Loading ---
+pymupdf
+
+# --- AI & LLM ---
+openai
+tiktoken

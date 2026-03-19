@@ -1,131 +1,141 @@
 import streamlit as st
-import time
-from agents.researcher import Researcher
-from agents.analyst import Analyst
+import os
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, AIMessage
+
+# Custom Imports
+from agents.agent import InvestigatorAgent
+from tools.agent_tools import tools
+from tools.rag_storage import get_storage_engine # This is critical
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="MarketMind AI | Financial Investigator",
-    page_icon="📈",
+    page_title="MarketMind AI | Chat Investigator",
+    page_icon="🕵️‍♂️",
     layout="wide"
 )
 
-# --- Custom Styling ---
-st.markdown("""
-    <style>
-    .reportview-container { background: #f0f2f6; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .reasoning-box { padding: 15px; border-left: 5px solid #007bff; background-color: #f8f9fa; margin: 10px 0; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- Session State Initialization ---
-if "history" not in st.session_state:
-    st.session_state.history = []
-if "analysis_done" not in st.session_state:
-    st.session_state.analysis_done = False
-
-# --- Sidebar: Step Titles & History ---
-st.sidebar.title("🧠 Reasoning Journey")
-# Placeholder for dynamic step highlighting
-step_placeholder = st.sidebar.empty()
-
-st.sidebar.divider()
-st.sidebar.title("📜 Investigation History")
-if st.session_state.history:
-    for stock in st.session_state.history:
-        st.sidebar.button(f"🔍 {stock}", key=f"hist_{stock}")
-else:
-    st.sidebar.info("No stocks discussed yet.")
+# --- 1. Session State Initialization ---
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "System initialized. Knowledge Base connecting... How can I help you today?"}]
+if "agent_path" not in st.session_state:
+    st.session_state.agent_path = []
+if "rag_ready" not in st.session_state:
+    st.session_state.rag_ready = False
 
 def main():
-    st.title("📈 MarketMind AI: Financial Investigator")
-    st.markdown("### Autonomous Trend Analysis & Investment Recommendations")
-    st.divider()
+    st.title("🕵️‍♂️ MarketMind: Autonomous Investigation Hub")
+    
+    # --- PHASE 0: MANDATORY BOOTSTRAP (The "Missing" Link) ---
+    data_folder = "data"
+    chroma_path = os.path.abspath(os.path.join(data_folder, "chroma_db"))
+    
+    # Check if DB already exists on disk
+    db_exists = os.path.exists(chroma_path) and any(os.scandir(chroma_path))
 
-    # --- User Input Section ---
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        company_input = st.text_input("Enter Company Name or Ticker:", placeholder="e.g., Enedis, Nvidia, Apple")
-    with col2:
-        invest_goal = st.selectbox("Investment Profile:", ["Aggressive Growth", "Balanced", "Conservative"])
-
-    if st.button("Start Investigation", type="primary"):
-        if not company_input:
-            st.error("Please enter a company name or a ticker symbol.")
-            return
+    if os.path.exists(data_folder):
+        pdf_files = [f for f in os.listdir(data_folder) if f.endswith(".pdf")]
         
-        # Update History & State
-        st.session_state.analysis_done = False
-        if company_input not in st.session_state.history:
-            st.session_state.history.append(company_input)
-
-        # Initialize Agents
-        researcher = Researcher()
-        analyst = Analyst()
-
-        # --- STAGE 1: ReAct Loop (Researcher) ---
-        step_placeholder.markdown("### 🏃 Current Step:\n**Phase 1: Research & Discovery**")
+        # If we have PDFs but NO database, start the ingestion immediately
+        if pdf_files and not db_exists and not st.session_state.rag_ready:
+            with st.status("🏗️ Knowledge Base not found. Ingesting PDFs...", expanded=True) as status:
+                try:
+                    # Get the cached storage engine
+                    storage = get_storage_engine()
+                    for file in pdf_files:
+                        st.write(f"📄 Processing: **{file}**...")
+                        storage.add_document(os.path.join(data_folder, file))
+                    
+                    st.session_state.rag_ready = True
+                    status.update(label="✅ Knowledge Base Built Successfully!", state="complete", expanded=False)
+                except Exception as e:
+                    st.error(f"Failed to build Knowledge Base: {e}")
         
-        with st.status("🚀 Phase 1: ReAct Loop (Researcher)...", expanded=True) as status:
-            st.write("🏃 **Action:** Executing `GeopoliticalSearch`...")
-            
-            # Action: Tool usage
-            raw_data = researcher.get_raw_data(company_input)
-            
-            st.write("🧠 **Thought:** Processing market news and prices...")
-            # Streaming the internal monologue DIRECTLY in the status box
-            research_summary = st.write_stream(
-                researcher.execute_stream(f"Perform a ReAct analysis (Thought/Action/Observation) on this data: {raw_data}")
-            )
-            
-            status.update(label="✅ Research Phase Complete!", state="complete", expanded=False)
-            st.session_state.research_summary = research_summary
+        # If DB exists, just connect to it
+        elif db_exists:
+            # This call ensures the singleton instance is loaded into cache
+            get_storage_engine() 
+            st.session_state.rag_ready = True
 
-        # --- STAGE 2: Chain of Thought & Self-Correction (Analyst) ---
-        step_placeholder.markdown("### 🏃 Current Step:\n**Phase 2: Advanced Reasoning**")
+    # --- Sidebar UI ---
+    with st.sidebar:
+        st.title("🧪 Step Tracker")
+        if st.session_state.agent_path:
+            for i, step in enumerate(st.session_state.agent_path):
+                st.markdown(f"**Step {i+1}:** {step['tool']}")
+        else:
+            st.info("No active investigation steps.")
         
-        with st.status("🧠 Phase 2: Advanced Reasoning (Analyst)...", expanded=True) as status:
-            st.write("🔢 **Thinking Step-by-Step (CoT)...**")
-            
-            # Streaming CoT directly in the middle of the screen
-            cot_result = st.write_stream(
-                analyst.execute_stream(f"Using Chain of Thought (CoT), decompose the analysis for {company_input}: {research_summary}")
-            )
-            
-            st.write("⚖️ **Performing Self-Correction (Reflexion)...**")
-            
-            # Streaming final Reflexion & Verdict
-            final_verdict = st.write_stream(
-                analyst.execute_stream("Critique your analysis. Identify any potential errors and provide final timing and duration recommendations.")
-            )
-            
-            status.update(label="✅ Analysis & Reflexion Complete!", state="complete", expanded=False)
-            st.session_state.final_verdict = final_verdict
-            st.session_state.analysis_done = True
-        
-        step_placeholder.markdown("### ✅ Status:\n**Investigation Concluded**")
-
-    # --- Main Dashboard Display ---
-    if st.session_state.analysis_done:
         st.divider()
-        st.subheader(f"📊 Investment Intelligence Report: {company_input}")
-        
-        tab1, tab2, tab3 = st.tabs(["🎯 Final Verdict", "🧠 Reasoning Detail", "🛠️ Data Observation Logs"])
-        
-        with tab1:
-            st.success("#### Strategy Recommendation")
-            st.markdown(st.session_state.final_verdict)
-            st.download_button("Download Report (PDF)", data=st.session_state.final_verdict, file_name=f"{company_input}_Report.txt")
+        if st.session_state.rag_ready:
+            st.success("✅ Knowledge Base: Online")
+        else:
+            st.warning("⚠️ Knowledge Base: Offline (Add PDFs to /data)")
 
-        with tab2:
-            st.markdown("#### Logic Chain Summary")
-            st.write(st.session_state.research_summary)
+    # --- Tabs Configuration ---
+    tab_chat, tab_path = st.tabs(["💬 Interactive Chat", "Tracks 🛤️ Agent Path"])
 
-        with tab3:
-            st.markdown("#### 🛠️ Data Observation Logs")
-            # This shows the RAW ReAct observation data in a technical code window
-            st.code(st.session_state.research_summary, language="markdown")
+    with tab_chat:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+    with tab_path:
+        st.subheader("🛠️ Autonomous Execution Trace")
+        if not st.session_state.agent_path:
+            st.info("The agent's tool-usage path will appear here.")
+        else:
+            for i, step in enumerate(st.session_state.agent_path):
+                with st.expander(f"Step {i+1}: {step['tool']}", expanded=False):
+                    st.code(step['result'], language="markdown")
+            
+            if st.session_state.messages[-1]["role"] == "assistant":
+                st.markdown("### 🎯 Final Conclusion")
+                st.success(st.session_state.messages[-1]["content"])
+
+    # --- Chat Input & Execution ---
+    if prompt := st.chat_input("Analyze LVMH strategy..."):
+        st.session_state.agent_path = [] # Clear path for new turn
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.rerun()
+
+    # If the user just asked a question, run the agent
+    if st.session_state.messages[-1]["role"] == "user":
+        llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        # Force a professional structure in the persona
+        system_instructions = """
+        You are a Senior Financial Investigator. 
+        MANDATORY: Use 'internal_knowledge_tool' for any companies found in PDFs.
+        Always provide a verdict (Buy/Sell/Hold) and entry/exit strategy.
+        """
+        agent = InvestigatorAgent(llm, tools, system_prompt=system_instructions)
+
+        # Convert history to LangChain format
+        history = [
+            HumanMessage(content=m["content"]) if m["role"] == "user" else AIMessage(content=m["content"])
+            for m in st.session_state.messages
+        ]
+
+        with st.chat_message("assistant"):
+            with st.status("🕵️ Investigating...", expanded=True) as status:
+                full_response = ""
+                for output in agent.graph.stream({"messages": history}):
+                    for key, value in output.items():
+                        if key == "llm":
+                            # Use content from the very last message in the list
+                            full_response = value["messages"][-1].content
+                        elif key == "action":
+                            for msg in value["messages"]:
+                                st.write(f"🛠️ Tool Call: `{msg.name}`")
+                                st.session_state.agent_path.append({
+                                    "tool": msg.name,
+                                    "result": msg.content
+                                })
+                status.update(label="Analysis Done", state="complete", expanded=False)
+            
+            st.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            st.rerun()
 
 if __name__ == "__main__":
     main()

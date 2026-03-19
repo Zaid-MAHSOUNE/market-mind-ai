@@ -2,6 +2,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from tools.stock_tools import get_market_news, get_company_info, get_stock_prices
+from tools.rag_storage import MarketMindStorage
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -12,6 +13,18 @@ class Researcher:
         with open(prompt_path, 'r') as f:
             self.system = f.read()
         self.messages = [{"role": "system", "content": self.system}]
+
+        self.rag_enabled = False
+        # Use the absolute path logic we fixed earlier
+        chroma_path = os.path.abspath(os.path.join("data", "chroma_db"))
+        
+        # If the DB folder exists and isn't empty, just enable it
+        if os.path.exists(chroma_path) and any(os.scandir(chroma_path)):
+            try:
+                self.rag_engine = MarketMindStorage()
+                self.rag_enabled = True
+            except Exception as e:
+                print(f"⚠️ Researcher RAG link failed: {e}")
 
     def execute_stream(self, message):
         """Returns a generator for real-time streaming of thoughts."""
@@ -57,20 +70,3 @@ class Researcher:
         )
         ticker = completion.choices[0].message.content.strip()
         return ticker
-
-    def get_raw_data(self, user_input):
-        ticker = self.resolve_ticker(user_input)
-        
-        # 1. Try to get Info (Robustly)
-        info = get_company_info(ticker)
-        
-        # 2. Try to get Prices (Handle delisted case)
-        prices = get_stock_prices(ticker)
-        if "No data found" in str(prices):
-            prices = "STOCK DATA UNAVAILABLE: This entity is likely private or nationalized (e.g., EDF/Enedis)."
-        
-        # 3. Always get News (This is our fallback for French companies)
-        search_query = f"French energy market news {user_input} {ticker} March 2026 stability and geopolitical impact"
-        news = get_market_news(search_query)
-        
-        return f"RESOLVED TICKER: {ticker}\n\nINFO: {info}\n\nMARKET DATA: {prices}\n\nGEOPOLITICAL NEWS: {news}"

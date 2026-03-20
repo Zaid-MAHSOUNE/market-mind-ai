@@ -27,5 +27,5 @@ def run_ingestion():
     
     print("✅ RAG Database (ChromaDB) is now ready!")
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     run_ingestion()

@@ -104,9 +104,13 @@ def main():
         llm = ChatOpenAI(model="gpt-4o", temperature=0)
         # Force a professional structure in the persona
         system_instructions = """
-        You are a Senior Financial Investigator. 
-        MANDATORY: Use 'internal_knowledge_tool' for any companies found in PDFs.
-        Always provide a verdict (Buy/Sell/Hold) and entry/exit strategy.
+        You are a Senior Financial Strategist. 
+        You have a memory of this conversation. Use it to provide context.
+        When asked for advice, always provide:
+        - A Clear Verdict (Buy/Hold/Sell)
+        - Entry and Exit prices
+        - Risk analysis based on RAG and News.
+        Format your final response using professional Markdown.
         """
         agent = InvestigatorAgent(llm, tools, system_prompt=system_instructions)
 

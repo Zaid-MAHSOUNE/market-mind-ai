@@ -31,7 +31,7 @@ class Researcher:
         self.messages.append({"role": "user", "content": message})
         
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             temperature=0,
             messages=self.messages,
             stream=True  # Enables streaming
@@ -64,7 +64,7 @@ class Researcher:
         """
         
         completion = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0
         )

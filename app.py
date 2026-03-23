@@ -88,7 +88,7 @@ def main():
         st.rerun()
 
     if st.session_state.messages[-1]["role"] == "user":
-        llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         
         system_instructions = """
         You are a Senior Financial Strategist using Advanced Reasoning (CoT, ToT, ReAct).

@@ -16,7 +16,7 @@ def company_entity_resolver(company_name: str):
     
     # 2. Ask the LLM to extract the ultimate parent and ticker from search results
     from langchain_openai import ChatOpenAI
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     
     extraction_prompt = f"""
     Based on these search results for '{company_name}':

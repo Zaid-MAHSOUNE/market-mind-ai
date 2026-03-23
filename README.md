@@ -85,21 +85,26 @@ flowchart LR
 ## 🚀 Installation & Setup
 
 ### For Linux/macOS:
-1. **Clone the repo:** ```bash
+1. **Clone the repo:** 
+```bash
    git clone https://github.com/Zaid-MAHSOUNE/market-mind-ai.git
-   ```
-2. **Create a virtual env:** ```bash
+```
+2. **Create a virtual env:** 
+```bash
    python -m venv market_env
-   ```
-3. **Activate the virtual env:** ```bash
+```
+3. **Activate the virtual env:** 
+```bash
    source market_env/bin/activate
-   ```
-4. **Install dependencies:** ```bash
+```
+4. **Install dependencies:** 
+```bash
    pip install -r requirements.txt
-   ```
-5. **Run the app:** ```bash
+```
+5. **Run the app:** 
+```bash
    streamlit run app.py
-   ```
+```
 
 ### For Windows:
 Please refer to the [official Python VirtualEnv guide](https://www.w3schools.com/python/python_virtualenv.asp) for activation instructions (`.\market_env\Scripts\activate`).

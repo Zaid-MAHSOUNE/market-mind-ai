@@ -3,176 +3,177 @@ import os
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
 
-# Custom Imports
+# Nos imports locaux
 from agents.agent import InvestigatorAgent
 from tools.agent_tools import tools
 from tools.rag_storage import get_storage_engine 
 from tools.stock_tools import load_prompt
 
-# --- Page Configuration ---
+# --- Configuration de la page ---
 st.set_page_config(
     page_title="MarketMind AI | Chat Investigator",
     page_icon="🕵️‍♂️",
-    layout="wide"
+    layout="wide" # Mode large pour mieux voir les colonnes et le tracé de l'agent
 )
 
-# --- 1. Session State Initialization ---
+# --- 1. Initialisation des variables de session (Session State) ---
+# Essentiel pour que Streamlit ne "perde" pas la mémoire à chaque clic
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "System initialized. Knowledge Base connecting... How can I help you today?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Système initialisé. Connexion à la base de connaissances... Comment puis-je vous aider ?"}]
 if "agent_path" not in st.session_state:
-    st.session_state.agent_path = []
+    st.session_state.agent_path = [] # Pour stocker l'historique des actions de l'IA
 if "rag_ready" not in st.session_state:
     st.session_state.rag_ready = False
 
 def main():
-    st.title("🕵️‍♂️ MarketMind: Autonomous Investigation Hub")
+    st.title("🕵️‍♂️ MarketMind: Hub d'Investigation Autonome")
     
-    # --- PHASE 0: MANDATORY BOOTSTRAP ---
+    # --- PHASE 0 : BOOTSTRAP AUTOMATIQUE ---
+    # Ici, on vérifie si on a des PDF à ingérer dès le lancement
     data_folder = "data"
     chroma_path = os.path.abspath(os.path.join(data_folder, "chroma_db"))
     db_exists = os.path.exists(chroma_path) and any(os.scandir(chroma_path))
 
     if os.path.exists(data_folder):
         pdf_files = [f for f in os.listdir(data_folder) if f.endswith(".pdf")]
+        # Si on a des PDF mais pas de base de données, on lance l'ingestion automatique
         if pdf_files and not db_exists and not st.session_state.rag_ready:
-            with st.status("🏗️ Knowledge Base not found. Ingesting PDFs...", expanded=True) as status:
+            with st.status("🏗️ Base de connaissances introuvable. Indexation des PDF...", expanded=True) as status:
                 try:
                     storage = get_storage_engine()
                     for file in pdf_files:
-                        st.write(f"📄 Processing: **{file}**...")
+                        st.write(f"📄 Traitement de : **{file}**...")
                         storage.add_document(os.path.join(data_folder, file))
                     st.session_state.rag_ready = True
-                    status.update(label="✅ Knowledge Base Built!", state="complete", expanded=False)
+                    status.update(label="✅ Base de connaissances prête !", state="complete", expanded=False)
                 except Exception as e:
-                    st.error(f"Failed to build Knowledge Base: {e}")
+                    st.error(f"Échec de la création de la base : {e}")
         elif db_exists:
             get_storage_engine() 
             st.session_state.rag_ready = True
 
-    # --- Sidebar UI ---
+    # --- Barre latérale (Sidebar) ---
     with st.sidebar:
-        st.title("🧪 Step Tracker")
+        st.title("🧪 Suivi des étapes")
+        # Affiche en temps réel ce que l'agent est en train de faire (quel outil il utilise)
         if st.session_state.agent_path:
             for i, step in enumerate(st.session_state.agent_path):
-                st.markdown(f"**Step {i+1}:** {step['tool']}")
+                st.markdown(f"**Étape {i+1}:** {step['tool']}")
         else:
-            st.info("No active investigation steps.")
+            st.info("Aucune investigation en cours.")
         st.divider()
+        # Indicateur visuel pour le statut du RAG
         if st.session_state.rag_ready:
-            st.success("✅ Knowledge Base: Online")
+            st.success("✅ Base de connaissances : En ligne")
         else:
-            st.warning("⚠️ Knowledge Base: Offline")
+            st.warning("⚠️ Base de connaissances : Hors ligne")
 
-    # --- Tabs Configuration ---
-    tab_chat, tab_path = st.tabs(["💬 Interactive Chat", "Tracks 🛤️ Agent Path"])
+    # --- Organisation en Onglets ---
+    tab_chat, tab_path = st.tabs(["💬 Chat Interactif", "🛤️ Tracé de l'Agent"])
 
     with tab_chat:
+        # Affichage classique des messages du chat
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
     with tab_path:
-        st.subheader("🛠️ Autonomous Execution Trace")
+        # C'est ici qu'on inspecte les "entrailles" du raisonnement de l'IA
+        st.subheader("🛠️ Trace d'exécution autonome")
         if not st.session_state.agent_path:
-            st.info("The agent's tool-usage path will appear here.")
+            st.info("Le chemin parcouru par l'agent s'affichera ici.")
         else:
             for i, step in enumerate(st.session_state.agent_path):
-                # Distinguish between tool calls and reasoning in the trace
                 icon = "⚙️" if "Action" in step['tool'] else "🧠"
-                with st.expander(f"{icon} Step {i+1}: {step['tool']}", expanded=False):
+                with st.expander(f"{icon} Étape {i+1}: {step['tool']}", expanded=False):
                     st.markdown(step['result'])
 
-    # --- Chat Input & Execution ---
-    if prompt := st.chat_input("Analyze Financial Strategy..."):
-        st.session_state.agent_path = [] 
+    # --- Saisie utilisateur et exécution ---
+    if prompt := st.chat_input("Analysez une stratégie financière..."):
+        st.session_state.agent_path = [] # On reset le tracé pour la nouvelle question
         st.session_state.messages.append({"role": "user", "content": prompt})
-        st.rerun()
+        st.rerun() # On force le rafraîchissement pour afficher le message user immédiatement
 
+    # Logique de réponse de l'agent
     if st.session_state.messages[-1]["role"] == "user":
-        job_temps = {
-        "reasoning": 0,  # Strict precision for tools/logic
-        "critique": 0.3    # Tiny bit of creativity for the auditor to find gaps
-        }
+        # On définit les températures : 0 pour être précis, 0.3 pour l'audit final
+        job_temps = {"reasoning": 0, "critique": 0.3}
 
         llm = ChatOpenAI(model="gpt-4o")
-        
         system_instructions = load_prompt("system_instructions.txt")
 
+        # Initialisation de notre agent d'investigation
         agent = InvestigatorAgent(
-        llm, 
-        tools, 
-        system_prompt=system_instructions,
-        temps=job_temps
+            llm, 
+            tools, 
+            system_prompt=system_instructions,
+            temps=job_temps
         )
 
+        # Conversion du format Streamlit vers le format LangChain (Messages)
         history = [
             HumanMessage(content=m["content"]) if m["role"] == "user" else AIMessage(content=m["content"])
             for m in st.session_state.messages
         ]
 
         with st.chat_message("assistant"):
-            # UI Containers for real-time thoughts
             thought_container = st.container() 
             full_response = ""
             
-            with st.status("🧠 Investigator is thinking...", expanded=True) as status:
+            # On utilise .stream() pour voir les étapes du graphe en direct
+            with st.status("🧠 L'enquêteur réfléchit...", expanded=True) as status:
                 for output in agent.graph.stream({"messages": history}):
                     for key, value in output.items():
                         
                         if key == "llm":
-                            # This is the CoT / Initial Reasoning
+                            # Phase de réflexion (Chain of Thought)
                             reasoning = value["messages"][-1].content
                             if reasoning:
                                 with thought_container:
-                                    with st.expander("💭 Chain of Thought (Reasoning Step)", expanded=False):
+                                    with st.expander("💭 Raisonnement interne", expanded=False):
                                         st.markdown(reasoning)
                                 
                                 st.session_state.agent_path.append({
-                                    "tool": "LLM Reasoning (CoT)",
+                                    "tool": "Raisonnement LLM (CoT)",
                                     "result": reasoning
                                 })
                                 full_response = reasoning
 
                         elif key == "action":
-                            # This is the ReAct (Action) phase
+                            # Phase ReAct : L'IA utilise un outil
                             for msg in value["messages"]:
-                                st.write(f"🛠️ **ReAct Action:** Using `{msg.name}`")
+                                st.write(f"🛠️ **Action :** Utilisation de `{msg.name}`")
                                 st.session_state.agent_path.append({
                                     "tool": f"Action: {msg.name}",
-                                    "result": f"**Input Arguments:** (Generated by AI)\n**Result:**\n{msg.content}"
+                                    "result": f"**Arguments :** (Générés par l'IA)\n**Résultat :**\n{msg.content}"
                                 })
 
                         elif key == "critique":
+                            # Phase finale : Auto-audit
                             reflexion = value["messages"][-1].content
                             
+                            # Si le modèle respecte le format avec séparateur "---"
                             if "---" in reflexion:
-                                # 1. Split the text into the Audit and the Plan
                                 parts = reflexion.split("---")
                                 audit_resume = parts[0].replace("RESUME:", "").strip()
                                 revised_plan = parts[1].strip()
                                 
-                                # 2. Display the Audit Resume as a subtle note
-                                st.markdown(f"⚖️ *Audit Findings: {audit_resume}*")
-                                
-                                # 3. Display the Strategy in the professional Green Box
-                                st.success(revised_plan)
-                                
+                                st.markdown(f"⚖️ *Résultat de l'audit : {audit_resume}*")
+                                st.success(revised_plan) # Affichage en vert pour la stratégie finale
                                 full_response = revised_plan
                             else:
-                                # Fallback: If the model forgets the '---', still use the green box
                                 st.success(reflexion)
                                 full_response = reflexion
 
-                            # Update the sidebar tracker
                             st.session_state.agent_path.append({
-                                "tool": "Reflexion Audit",
+                                "tool": "Audit de Réflexion",
                                 "result": reflexion
                             })
 
-                status.update(label="✅ Analysis Complete", state="complete", expanded=False)
+                status.update(label="✅ Analyse terminée", state="complete", expanded=False)
             
-            # Show final strategy prominently
-            st.markdown("### 🎯 Final Investment Strategy")
+            # Affichage final propre sous le status
+            st.markdown("### 🎯 Stratégie d'Investissement Finale")
             st.markdown(full_response)
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             st.rerun()

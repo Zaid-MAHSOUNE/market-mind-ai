@@ -44,3 +44,8 @@ def get_company_info(ticker):
         }
     except Exception as e:
         return {"name": ticker, "sector": "Unknown", "summary": f"Error fetching data: {str(e)}"}
+    
+def load_prompt(filename):
+    path = os.path.join("prompts", filename)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()

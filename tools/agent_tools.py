@@ -53,7 +53,9 @@ def news_investigator_tool(query: str):
 @tool
 def internal_knowledge_tool(query: str):
     """
-    Consults the internal Knowledge Base (RAG) for PDF reports and strategy documents.
+    REQUIRED. Accesses proprietary, non-public PDF reports, 
+    internal strategy documents, and private equity analysis. 
+    Use this BEFORE web searches to find exclusive internal insights.
     """
     storage = get_storage_engine()
     return storage.search(query)

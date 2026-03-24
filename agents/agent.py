@@ -5,24 +5,36 @@ from operator import add
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, END
+from tools.stock_tools import load_prompt
 
 # --- 1. Define the State ---
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add]
 
 class InvestigatorAgent:
-    def __init__(self, model: ChatOpenAI, tools: list, system_prompt: str = ""):
+    def __init__(self, model: ChatOpenAI, tools: list, system_prompt: str = "", temps: dict = None):
         self.system = system_prompt
         self.tools = {t.name: t for t in tools}
-        self.model = model.bind_tools(tools)
+        
+        # Default temperatures if none provided
+        self.temps = temps or {"reasoning": 0.3, "critique": 0.0}
 
-        # --- 2. Build the Graph ---
+        # --- Create specialized models for each node ---
+        # 1. Reasoning Model: Logic-focused + Tools
+        self.reasoning_model = model.bind_tools(tools).bind(temperature=self.temps["reasoning"])
+        
+        # 2. Critique Model: Audit-focused + No Tools
+        self.critique_model = model
+
+        self.critique_template = load_prompt("critique_prompt.txt")
+
+        # --- Build the Graph ---
         builder = StateGraph(AgentState)
 
         # Define Nodes
         builder.add_node("llm", self.call_llm)
         builder.add_node("action", self.take_action)
-        builder.add_node("critique", self.self_correction) # New Node for Reflexion
+        builder.add_node("critique", self.self_correction)
 
         # Set Entry Point
         builder.set_entry_point("llm")
@@ -33,7 +45,7 @@ class InvestigatorAgent:
             self.should_continue,
             {
                 True: "action", 
-                False: "critique" # Instead of END, go to Self-Correction
+                False: "critique"
             }
         )
 
@@ -55,7 +67,8 @@ class InvestigatorAgent:
         messages = state['messages']
         if self.system:
             messages = [SystemMessage(content=self.system)] + messages
-        response = self.model.invoke(messages)
+        
+        response = self.reasoning_model.invoke(messages) 
         return {"messages": [response]}
 
     def take_action(self, state: AgentState):
@@ -70,23 +83,14 @@ class InvestigatorAgent:
             tool_results.append(ToolMessage(tool_call_id=tool_call['id'], name=tool_call['name'], content=str(result)))
         return {"messages": tool_results}
 
-    def self_correction(self, state: AgentState):
-        """Reflexion Node: Audits the previous analysis."""
-        # Get the analysis from the previous 'llm' node
+    def self_correction(self, state):
+        """Reflexion Node: Audits for over-optimism and suggests a revised strategy."""
         last_analysis = state['messages'][-1].content
         
-        reflection_prompt = f"""
-        ACT AS A SENIOR EDITOR. REVIEW THIS ANALYSIS:
-        ---
-        {last_analysis}
-        ---
+        reflection_prompt = self.critique_template.format(last_analysis=last_analysis)
+
+        response = self.critique_model.invoke([
+            SystemMessage(content=reflection_prompt)
+        ])
         
-        CRITICAL INSTRUCTIONS:
-        1. Evaluate for risks, pricing accuracy, and RAG data usage.
-        2. If errors exist, fix them.
-        3. MANDATORY: You must output the COMPLETE FINAL VERSION of the strategy.
-        4. NEVER simply say 'No changes needed'. You must REPRINT the full report so the user can see it.
-        """
-        
-        response = self.model.invoke([SystemMessage(content=reflection_prompt)])
         return {"messages": [response]}

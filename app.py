@@ -4,9 +4,10 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
 
 # Custom Imports
-from agents.agent import InvestigatorAgent # Ensure this matches your filename
+from agents.agent import InvestigatorAgent
 from tools.agent_tools import tools
 from tools.rag_storage import get_storage_engine 
+from tools.stock_tools import load_prompt
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -82,29 +83,28 @@ def main():
                     st.markdown(step['result'])
 
     # --- Chat Input & Execution ---
-    if prompt := st.chat_input("Analyze LVMH strategy..."):
+    if prompt := st.chat_input("Analyze Financial Strategy..."):
         st.session_state.agent_path = [] 
         st.session_state.messages.append({"role": "user", "content": prompt})
         st.rerun()
 
     if st.session_state.messages[-1]["role"] == "user":
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        job_temps = {
+        "reasoning": 0,  # Strict precision for tools/logic
+        "critique": 0.3    # Tiny bit of creativity for the auditor to find gaps
+        }
+
+        llm = ChatOpenAI(model="gpt-4o")
         
-        system_instructions = """
-        You are a Senior Financial Strategist using Advanced Reasoning (CoT, ToT, ReAct).
-        
-        ### 1. CHAIN OF THOUGHT (Mandatory)
-        Document your logic: Observation -> Variable Analysis -> Synthesis.
+        system_instructions = load_prompt("system_instructions.txt")
 
-        ### 2. TREE OF THOUGHTS (Scenario Branching)
-        Evaluate Bull Case, Bear Case, and Base Case.
+        agent = InvestigatorAgent(
+        llm, 
+        tools, 
+        system_prompt=system_instructions,
+        temps=job_temps
+        )
 
-        ### 3. OUTPUT STRUCTURE
-        - Final Verdict: Buy / Hold / Sell
-        - Entry Strategy | Exit & Stop-Loss | Risk analysis.
-        """
-
-        agent = InvestigatorAgent(llm, tools, system_prompt=system_instructions)
         history = [
             HumanMessage(content=m["content"]) if m["role"] == "user" else AIMessage(content=m["content"])
             for m in st.session_state.messages
@@ -144,19 +144,30 @@ def main():
 
                         elif key == "critique":
                             reflexion = value["messages"][-1].content
-                            if reflexion.strip() and len(reflexion) > 50: # Ensure it's a real report, not just 'Done'
-                                st.write("⚖️ **Reflexion Phase:** Analysis refined.")
-                                with thought_container:
-                                    with st.expander("⚖️ Self-Correction (Reflexion Log)", expanded=False):
-                                        st.markdown(reflexion)
+                            
+                            if "---" in reflexion:
+                                # 1. Split the text into the Audit and the Plan
+                                parts = reflexion.split("---")
+                                audit_resume = parts[0].replace("RESUME:", "").strip()
+                                revised_plan = parts[1].strip()
                                 
-                                st.session_state.agent_path.append({
-                                    "tool": "Reflexion (Self-Correction)",
-                                    "result": reflexion
-                                })
-                                full_response = reflexion
+                                # 2. Display the Audit Resume as a subtle note
+                                st.markdown(f"⚖️ *Audit Findings: {audit_resume}*")
+                                
+                                # 3. Display the Strategy in the professional Green Box
+                                st.success(revised_plan)
+                                
+                                full_response = revised_plan
                             else:
-                                st.write("⚖️ **Reflexion Phase:** Initial analysis verified as optimal.")
+                                # Fallback: If the model forgets the '---', still use the green box
+                                st.success(reflexion)
+                                full_response = reflexion
+
+                            # Update the sidebar tracker
+                            st.session_state.agent_path.append({
+                                "tool": "Reflexion Audit",
+                                "result": reflexion
+                            })
 
                 status.update(label="✅ Analysis Complete", state="complete", expanded=False)
             

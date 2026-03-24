@@ -1,17 +1,16 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from tools.stock_tools import get_market_news, get_company_info, get_stock_prices
 from tools.rag_storage import MarketMindStorage
+from tools.stock_tools import load_prompt
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 class Researcher:
     def __init__(self):
-        prompt_path = os.path.join(os.path.dirname(__file__), '..', 'prompts', 'researcher_logic.txt')
-        with open(prompt_path, 'r') as f:
-            self.system = f.read()
+        self.system = load_prompt('researcher_logic.txt')
+        self.ticker_resolver_template = load_prompt('ticker_resolver.txt')
         self.messages = [{"role": "system", "content": self.system}]
 
         self.rag_enabled = False
@@ -51,17 +50,7 @@ class Researcher:
         New Method: Converts a company name to a stock ticker.
         If the user provides 'Enedis', it finds the relevant ticker or parent company.
         """
-        # Quick internal 'thought' to resolve ticker
-        prompt = f"""
-        Find the stock ticker symbol for the company: {query}. 
-        
-        CRITICAL INSTRUCTIONS:
-        1. If the company is French, prioritize the Euronext Paris ticker (suffix '.PA').
-        2. Example: 'LVMH' -> 'MC.PA', 'Total' -> 'TTE.PA'.
-        3. If the company is private (like Enedis), identify the parent company (EDF) and use its last known ticker or specify it is a state-owned entity.
-        
-        Return ONLY the ticker symbol.
-        """
+        prompt = self.ticker_resolver_template.format(query=query)
         
         completion = client.chat.completions.create(
             model="gpt-4o-mini",

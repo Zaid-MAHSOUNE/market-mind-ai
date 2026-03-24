@@ -149,24 +149,44 @@ def main():
                                 })
 
                         elif key == "critique":
-                            # Phase finale : Auto-audit
                             reflexion = value["messages"][-1].content
                             
-                            # Si le modèle respecte le format avec séparateur "---"
                             if "---" in reflexion:
                                 parts = reflexion.split("---")
                                 audit_resume = parts[0].replace("RESUME:", "").strip()
                                 revised_plan = parts[1].strip()
                                 
-                                st.markdown(f"⚖️ *Résultat de l'audit : {audit_resume}*")
-                                st.success(revised_plan) # Affichage en vert pour la stratégie finale
+                                import re
+                                price_match = re.search(r"Target Entry Price:\*\* ([\$\d\.,\-\s]+)", revised_plan)
+                                target_price = price_match.group(1).strip() if price_match else "N/A"
+                                
+                                # Display Audit Findings
+                                st.markdown(f"⚖️ *Audit Findings: {audit_resume}*")
+                                
+                                # Create a clean layout with a Metric for the Price
+                                col1, col2 = st.columns([1, 3])
+                                
+                                with col1:
+                                    st.metric(label="Target Entry Price", value=target_price)
+                                    
+                                with col2:
+                                    # Color-coded boxes based on Verdict
+                                    if "Verdict: Buy" in revised_plan:
+                                        st.success(revised_plan)
+                                    elif "Verdict: Sell" in revised_plan:
+                                        st.error(revised_plan)
+                                    else:
+                                        st.warning(revised_plan)
+                                    
                                 full_response = revised_plan
                             else:
-                                st.success(reflexion)
+                                st.info(reflexion)
                                 full_response = reflexion
 
+                            st.session_state.agent_path.append({"tool": "Price Discovery Audit", "result": reflexion})
+
                             st.session_state.agent_path.append({
-                                "tool": "Audit de Réflexion",
+                                "tool": "Strategist Audit",
                                 "result": reflexion
                             })
 

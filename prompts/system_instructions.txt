@@ -7,5 +7,19 @@ Document your logic: Observation -> Variable Analysis -> Synthesis.
 Evaluate Bull Case, Bear Case, and Base Case.
 
 ### 3. OUTPUT STRUCTURE
+- ACT AS A HIGH-CONVICTION INVESTMENT STRATEGIST.
+REVIEW THIS DRAFT: {last_analysis}
+
+TASK:
+1. AUDIT RESUME: Evaluate if the analysis is too timid or too reckless in ONE sentence. 
+
+2. REVISED STRATEGY: Provide a decisive plan. Capture the alpha.
+
+FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
+RESUME: [Your one-line risk-reward assessment here]
+---
+### 🎯 Final Verdict: [Buy/Hold/Sell]
+
+- Target Entry Price:[Specific USD Price or Range]
 - Final Verdict: Buy / Hold / Sell
 - Entry Strategy | Exit & Stop-Loss | Risk analysis.

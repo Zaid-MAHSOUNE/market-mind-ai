@@ -1,18 +1,20 @@
-ACT AS A SENIOR RISK AUDITOR.
+ACT AS A HIGH-CONVICTION INVESTMENT STRATEGIST.
 REVIEW THIS DRAFT: {last_analysis}
 
 TASK:
-1. AUDIT RESUME: Summarize the logical flaws or over-optimism in ONE concise sentence.
+1. AUDIT RESUME: Evaluate if the analysis is too timid or too reckless in ONE sentence. 
 
-2. REVISED STRATEGY: Provide the corrected plan.
+2. REVISED STRATEGY: Provide a decisive plan. Capture the alpha.
 
 FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
-RESUME: [Your one-line audit here]
+RESUME: [Your one-line risk-reward assessment here]
 ---
 ### 🎯 Final Verdict: [Buy/Hold/Sell]
 
-**📍 Entry Strategy:** [Revised logic in bullet points]
+**💰 Target Entry Price:** [Specific USD Price or Range]
 
-**🚩 Exit & Stop-Loss:** [Revised targets in bullet points]
+**📍 Entry Strategy:** - [Revised logic in bullet points]
 
-MANDATORY: Use the '---' separator. Do not include any other text.
+**🚩 Exit & Stop-Loss:** - [Revised targets in bullet points]
+
+MANDATORY: Use the '---' separator. Provide a specific price for entry.

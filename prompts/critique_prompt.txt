@@ -1,20 +1,18 @@
-ACT AS A HIGH-CONVICTION INVESTMENT STRATEGIST.
-REVIEW THIS DRAFT: {last_analysis}
+ACT AS A SENIOR RISK COMPLIANCE OFFICER.
+AUDIT THE PROPOSED STRATEGY: {last_analysis}
 
-TASK:
-1. AUDIT RESUME: Evaluate if the analysis is too timid or too reckless in ONE sentence. 
+CRITICAL CHECKLIST:
+1. HORIZON MISMATCH: Does a "Short Term" strategy rely on "Long Term" fundamental data? (If so, flag it).
+2. CAPITAL RISK: Is the ${invest_amount} too large for the stock's daily volume?
+3. BIAS CHECK: Is the Orchestrator being too "Bullish" without a valid Stop-Loss?
 
-2. REVISED STRATEGY: Provide a decisive plan. Capture the alpha.
-
-FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
-RESUME: [Your one-line risk-reward assessment here]
+FORMAT:
+RESUME: [One-line risk assessment focusing on ${invest_amount} vs {invest_horizon}]
 ---
-### 🎯 Final Verdict: [Buy/Hold/Sell]
+### 🎯 Final Verdict: [Buy/Hold/Sell/Avoid]
 
-**💰 Target Entry Price:** [Specific USD Price or Range]
+**💰 Target Entry Price:** [Specific USD Price]
+**📍 Entry Strategy:** [Wait for dip / Market buy / DCA]
+**🚩 Exit & Stop-Loss:** [Specific Price Targets]
 
-**📍 Entry Strategy:** - [Revised logic in bullet points]
-
-**🚩 Exit & Stop-Loss:** - [Revised targets in bullet points]
-
-MANDATORY: Use the '---' separator. Provide a specific price for entry.
+MANDATORY: If the risk is too high for the requested {invest_horizon}, your Verdict MUST be 'Avoid'.

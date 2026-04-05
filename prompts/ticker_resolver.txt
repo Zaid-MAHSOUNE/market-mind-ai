@@ -1,8 +1,8 @@
-Find the stock ticker symbol for the company: {query}. 
+TASK: Resolve the company name "{query}" into a valid financial ticker.
 
-CRITICAL INSTRUCTIONS:
-1. If the company is French, prioritize the Euronext Paris ticker (suffix '.PA').
-2. Example: 'LVMH' -> 'MC.PA', 'Total' -> 'TTE.PA'.
-3. If the company is private (like Enedis), identify the parent company (EDF) and use its last known ticker or specify it is a state-owned entity.
+### HIERARCHY RULES:
+1. FRENCH ASSETS: Use Euronext Paris (suffix '.PA').
+2. PARENT MAPPING: If the entity is private (e.g., Enedis, SpaceX), return the ticker of the majority owner (e.g., 'EDF', 'DISH').
+3. STATE-OWNED: If no ticker exists, return "PRIVATE_ENTITY".
 
-Return ONLY the ticker symbol.
+RETURN FORMAT: [TICKER] (Only the symbol, e.g., AAPL or MC.PA)

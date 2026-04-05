@@ -1,5 +1,7 @@
 # 📈 MarketMind AI: Intelligent Financial Investigator
 
+- *Collaborateurs: ZAID MAHSOUNE - SALAHEDDINE ELAIDAOUI*
+
 **MarketMind AI** is an autonomous financial analyst powered by a Multi-Agent generative AI architecture. Built with **Streamlit**, it goes beyond standard chat interfaces by implementing self-correcting reasoning loops to provide high-conviction, data-backed investment strategies.
 
 ---

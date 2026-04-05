@@ -13,6 +13,8 @@ class AgentState(TypedDict):
     # Annotated with 'add' allows messages to be appended to the list 
     # instead of overwriting it at each step.
     messages: Annotated[List[BaseMessage], add]
+    invest_amount: int
+    invest_horizon: str
 
 class InvestigatorAgent:
     def __init__(self, model: ChatOpenAI, tools: list, system_prompt: str = "", temps: dict = None):
@@ -74,14 +76,22 @@ class InvestigatorAgent:
         return len(last_message.tool_calls) > 0
 
     def call_llm(self, state: AgentState):
-        """Reasoning Node: Calls the LLM with the current context."""
+        """Reasoning Node: Calls the LLM with formatted instructions."""
         messages = state['messages']
-        # Prepends the system prompt if one is defined
-        if self.system:
-            messages = [SystemMessage(content=self.system)] + messages
+        
+        # NEW: Format the system prompt with state variables
+        amount = state.get('invest_amount', 1000)
+        horizon = state.get('invest_horizon', "Medium Term")
+        
+        formatted_system = self.system.format(
+            invest_amount=amount, 
+            invest_horizon=horizon
+        )
+        
+        # Prepend formatted system message
+        messages = [SystemMessage(content=formatted_system)] + messages
         
         response = self.reasoning_model.invoke(messages) 
-        # Returns the produced message to be added to the state
         return {"messages": [response]}
 
     def take_action(self, state: AgentState):
@@ -106,14 +116,20 @@ class InvestigatorAgent:
         return {"messages": tool_results}
 
     def self_correction(self, state):
-        """Reflection Node: Audits the analysis to correct for over-optimism."""
-        # Retrieving the content of the last analysis produced
+        """Reflection Node: Audits the analysis with user parameters."""
         last_analysis = state['messages'][-1].content
         
-        # Preparing the reflection prompt with the analysis text
-        reflection_prompt = self.critique_template.format(last_analysis=last_analysis)
+        # Extract the variables from the state dictionary
+        amount = state.get('invest_amount', 1000)
+        horizon = state.get('invest_horizon', "Medium Term")
 
-        # Calling the critique model (usually with 0.0 temperature)
+        # Pass all variables to the formatter
+        reflection_prompt = self.critique_template.format(
+            last_analysis=last_analysis,
+            invest_amount=amount,
+            invest_horizon=horizon
+        )
+
         response = self.critique_model.invoke([
             SystemMessage(content=reflection_prompt)
         ])
